@@ -1,0 +1,14 @@
+{
+  "huggingface": {
+    "api_key": "your_huggingface_api_key_here"
+  },
+  "model_settings": {
+    "temperature": 0.7,
+    "top_p": 0.95,
+    "max_tokens": 64000
+  },
+  "proxy": {
+    "http": "http://127.0.0.1:7890",
+    "https": "http://127.0.0.1:7890"
+  }
+} 

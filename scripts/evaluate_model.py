@@ -7,7 +7,7 @@ import argparse
 import torch
 import random
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from peft import PeftModel
 
 def parse_args():
@@ -39,7 +39,7 @@ def load_model(args):
     # 设置量化配置
     quantization_config = None
     if args.use_4bit:
-        quantization_config = torch.BitsAndBytesConfig(
+        quantization_config = BitsAndBytesConfig(
             load_in_4bit=True,
             bnb_4bit_compute_dtype=torch.float16,
             bnb_4bit_quant_type="nf4",

@@ -45,7 +45,10 @@ def parse_args():
     parser.add_argument("--html_file", type=str, default="data/iso_directives.html", help="ISO标准HTML文件")
     parser.add_argument("--model_name", type=str, default="deepseek-ai/deepseek-r1-distill-qwen-7b", help="基础模型名称")
     parser.add_argument("--max_sections", type=int, default=100, help="生成问答时处理的最大章节数")
-    parser.add_argument("--num_epochs", type=int, default=3, help="训练轮数")
+    parser.add_argument("--num_epochs", type=int, default=5, help="训练轮数")
+    parser.add_argument("--lora_r", type=int, default=16, help="LoRA的rank值")
+    parser.add_argument("--lora_alpha", type=int, default=32, help="LoRA的alpha值")
+    parser.add_argument("--learning_rate", type=float, default=5e-5, help="学习率")
     parser.add_argument("--use_4bit", action="store_true", help="是否使用4位量化训练")
     parser.add_argument("--bf16", action="store_true", help="是否使用bf16精度")
     parser.add_argument("--output_dir", type=str, default="./models", help="输出目录")
@@ -53,6 +56,8 @@ def parse_args():
     parser.add_argument("--skip_training", action="store_true", help="跳过训练步骤")
     parser.add_argument("--skip_evaluation", action="store_true", help="跳过评估步骤")
     parser.add_argument("--skip_export", action="store_true", help="跳过导出步骤")
+    parser.add_argument("--skip_model_download", action="store_true", help="跳过模型下载步骤")
+    parser.add_argument("--skip_config_fix", action="store_true", help="跳过配置修复步骤")
     parser.add_argument("--config_file", type=str, default="config.json", help="配置文件路径")
     
     return parser.parse_args()
@@ -107,7 +112,7 @@ def main():
             print("发现已存在的问答数据集 data/iso_alpaca_dataset.json，将直接使用")
         else:
             # 下载HTML文件（如果不存在）
-            if not os.path.exists(args.html_file):
+            if not args.skip_model_download and not os.path.exists(args.html_file):
                 run_command(
                     f"wget -O {args.html_file} https://www.iso.org/sites/directives/current/part2/index.xhtml",
                     description="下载ISO标准HTML文件"
@@ -129,8 +134,13 @@ def main():
     
     # 2. 设置环境和下载模型
     if not args.skip_training:
+        setup_command = f"python scripts/setup_training.py --model {args.model_name} --config_file {args.config_file}"
+        
+        if args.skip_model_download:
+            setup_command += " --skip_download"
+            
         run_command(
-            f"python scripts/setup_training.py --model {args.model_name} --config_file {args.config_file}",
+            setup_command,
             description="设置训练环境"
         )
         
@@ -139,7 +149,10 @@ def main():
             f"python scripts/finetune_lora.py "
             f"--model_name {args.model_name} "
             f"--output_dir {args.output_dir} "
-            f"--num_train_epochs {args.num_epochs} "
+            f"--num_epochs {args.num_epochs} "
+            f"--learning_rate {args.learning_rate} "
+            f"--lora_r {args.lora_r} "
+            f"--lora_alpha {args.lora_alpha} "
         )
         
         if args.use_4bit:
@@ -155,12 +168,25 @@ def main():
     else:
         print("跳过训练步骤")
     
+    # 新增步骤: 创建兼容配置
+    if not args.skip_config_fix:
+        fixed_dir = f"{args.output_dir}/fixed"
+        config_command = f"python scripts/fix_config.py --input_dir {args.output_dir} --output_dir {fixed_dir}"
+        run_command(
+            config_command,
+            description="创建兼容配置"
+        )
+    else:
+        print("跳过配置修复步骤")
+    
     # 4. 评估模型
     if not args.skip_evaluation:
+        # 使用兼容配置目录进行评估
+        eval_dir = f"{args.output_dir}/fixed" if not args.skip_config_fix else args.output_dir
         eval_command = (
             f"python scripts/evaluate_model.py "
             f"--base_model {args.model_name} "
-            f"--peft_model {args.output_dir} "
+            f"--peft_model {eval_dir} "
             f"--output_file {os.path.join(args.output_dir, 'evaluation_results.json')} "
         )
         
@@ -176,10 +202,12 @@ def main():
     
     # 5. 导出模型
     if not args.skip_export:
+        # 使用兼容配置目录进行导出
+        export_dir = f"{args.output_dir}/fixed" if not args.skip_config_fix else args.output_dir
         export_command = (
             f"python scripts/export_model.py "
             f"--base_model {args.model_name} "
-            f"--peft_model {args.output_dir} "
+            f"--peft_model {export_dir} "
             f"--output_dir {os.path.join(args.output_dir, 'exported')} "
             f"--merge_lora "
         )
@@ -191,6 +219,14 @@ def main():
     else:
         print("跳过导出步骤")
     
+    # 6. 测试模型
+    test_dir = f"{args.output_dir}/fixed" if not args.skip_config_fix else args.output_dir
+    test_command = f"python iso_expert.py --query \"ISO标准中'shall'和'should'有什么区别？\" --peft_model {test_dir} --temperature 0.3"
+    run_command(
+        test_command,
+        description="测试模型"
+    )
+    
     print(f"""
 === 处理完成! ===
 
@@ -201,12 +237,16 @@ def main():
    - 上传到Hugging Face: `huggingface-cli upload <your-username>/iso-expert-dataset data/iso_alpaca_dataset.json`
 
 2. 微调后的模型:
-   - 模型目录: {args.output_dir}
-   - 上传到Hugging Face: `huggingface-cli upload <your-username>/iso-expert-model {args.output_dir}`
+   - 模型目录: {test_dir}
+   - 上传到Hugging Face: `huggingface-cli upload <your-username>/iso-expert-model {test_dir}`
 
 3. 移动设备模型:
    - 模型目录: {os.path.join(args.output_dir, 'exported/mobile')}
    - 分享此目录中的文件，用户可以在MLC Chat等移动应用中使用
+
+4. 使用模型:
+   - 交互模式: `python iso_expert.py --interactive --peft_model {test_dir}`
+   - 单次查询: `python iso_expert.py --query "您的问题" --peft_model {test_dir} --temperature 0.3`
 
 祝您使用愉快!
     """)

@@ -106,6 +106,7 @@ def main():
     parser.add_argument("--model", type=str, default="deepseek-ai/deepseek-llm-7b-base", help="要下载的模型名称")
     parser.add_argument("--output_dir", type=str, default="models", help="模型保存目录")
     parser.add_argument("--config_file", type=str, default="config.json", help="配置文件路径")
+    parser.add_argument("--skip_download", action="store_true", help="跳过模型下载步骤")
     
     args = parser.parse_args()
     
@@ -113,9 +114,12 @@ def main():
     setup_environment(args)
     
     # 下载模型
-    download_model(args.model, args.output_dir)
-    
-    print("一切就绪，可以开始微调!")
+    if not args.skip_download:
+        download_model(args.model, args.output_dir)
+        print("一切就绪，可以开始微调!")
+    else:
+        print("跳过模型下载，假设模型已存在")
+        print("一切就绪，可以开始微调!")
 
 if __name__ == "__main__":
     main() 

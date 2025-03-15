@@ -44,8 +44,7 @@ ehthumbs.db
 Thumbs.db
 
 # Project specific
-models/deepseek-r1-distill-qwen-7b/
-models/exported/
+models/
 *.safetensors
 *.bin
 *.pt
@@ -63,3 +62,7 @@ config.json
 
 # Large data files
 data/iso_directives.html 
+
+*.bak
+*.temp
+*.tmp

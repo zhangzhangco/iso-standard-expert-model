@@ -76,6 +76,21 @@ def clean_temp_files():
                 print(f"无法删除 {file}: {e}")
     else:
         print("\n没有发现需要清理的临时文件")
+    
+    # 确保debug_files目录存在
+    debug_dir = "debug_files"
+    if os.path.exists(debug_dir) and os.path.isdir(debug_dir):
+        debug_files = glob.glob(os.path.join(debug_dir, "debug_*.txt"))
+        if debug_files:
+            print(f"\n清理debug文件: 共{len(debug_files)}个文件")
+            for file in debug_files:
+                try:
+                    os.remove(file)
+                except Exception as e:
+                    print(f"无法删除 {file}: {e}")
+            print(f"已清理debug_files目录中的所有debug文件")
+        else:
+            print("\ndebug_files目录中没有发现需要清理的文件")
 
 def main():
     args = parse_args()
@@ -126,7 +141,7 @@ def main():
             
             # 生成问答数据集
             run_command(
-                f"python scripts/generate_qa_dataset.py --max_sections {args.max_sections}",
+                f"python scripts/generate_qa_dataset.py --sections_file data/iso_sections.json --output_file data/iso_alpaca_dataset.json --max_sections {args.max_sections} --config {args.config_file}",
                 description="生成问答数据集"
             )
     else:

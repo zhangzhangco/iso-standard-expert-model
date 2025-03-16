@@ -4,7 +4,7 @@
 
 ## 项目概述
 
-本项目旨在构建一个专业的ISO标准文档编写辅助工具，通过深度学习技术，将ISO/IEC Directives, Part 2文档中的规则和知识转化为可交互的智能模型。
+本项目旨在构建一个专业的ISO标准文档编写辅助工具，通过深度学习技术，将ISO/IEC Directives, Part 2文档中的规则和知识转化为可交互的智能模型。**模型已成功训练完成，可直接使用models/fixed目录下的模型文件。**
 
 ## 核心功能
 
@@ -34,6 +34,9 @@
 │   ├── export_model.py        # 导出为移动设备可用格式
 │   └── fix_config.py          # 修复PEFT配置兼容性问题
 ├── models/                    # 模型文件夹（训练结果）
+│   ├── fixed/                 # 修复后的模型文件（推荐使用）
+│   ├── checkpoint-*/          # 训练过程中的检查点（可安全删除）
+│   └── evaluation_results.json # 模型评估结果
 ├── iso_expert.py              # ISO专家模型查询工具
 └── run_all.py                 # 主运行脚本
 ```
@@ -163,6 +166,33 @@ python iso_expert.py --query "ISO标准中'shall'和'should'有什么区别？" 
 ```
 
 ## 模型部署
+
+### 推荐使用的模型版本
+
+**强烈建议使用models/fixed目录下的模型文件**，而非其他检查点。fixed目录是通过fix_config.py脚本创建的，目的是解决PEFT配置兼容性问题，确保模型在不同环境中的稳定性。
+
+### 清理检查点文件
+
+训练完成后，可以安全地删除models/checkpoint-*目录以节省存储空间，只需保留models/fixed目录即可。这些检查点是训练过程中的中间状态，在模型完成训练后不再需要。
+
+```bash
+# 在Linux/macOS系统中清理检查点
+rm -rf models/checkpoint-*
+
+# 在Windows系统中清理检查点
+rmdir /s /q models\checkpoint-*
+```
+
+### 模型评估结果
+
+模型在ISO标准问答方面，能够回答关于ISO/IEC Directives Part 2的专业问题。评估结果显示模型能够：
+
+- 正确解释ISO标准中的专业术语和规则
+- 理解并回答关于标准编写格式的问题
+- 提供符合ISO规范的建议和解释
+- 处理关于标准条款、附录、表格等具体元素的查询
+
+完整的评估结果可在models/evaluation_results.json文件中查看。
 
 ### 分享数据集和模型
 

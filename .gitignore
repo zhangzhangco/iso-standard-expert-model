@@ -42,6 +42,8 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+debug_*.txt
+debug_files/
 
 # Project specific
 models/
